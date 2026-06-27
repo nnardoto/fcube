@@ -41,7 +41,7 @@ endif
 
 BUILD ?= release
 
-FFLAGS_COMMON := -std=f2018 -Wall -Wextra -J$(BUILDDIR)
+FFLAGS_COMMON := -std=f2018 -Wall -Wextra -Wno-maybe-uninitialized -J$(BUILDDIR)
 
 ifeq ($(BUILD),debug)
   FFLAGS := $(FFLAGS_COMMON) -O0 -g -fcheck=all -fbacktrace
@@ -57,7 +57,9 @@ LIB_SRCS := \
   $(SRCDIR)/cube_kinds.f90 \
   $(SRCDIR)/cube_data.f90  \
   $(SRCDIR)/cube_io.f90    \
-  $(SRCDIR)/cube_arith.f90
+  $(SRCDIR)/cube_arith.f90 \
+  $(SRCDIR)/cube_fft.f90   \
+  $(SRCDIR)/cube_diff.f90
 
 LIB_OBJS := $(patsubst $(SRCDIR)/%.f90, $(BUILDDIR)/%.o, $(LIB_SRCS))
 
@@ -75,7 +77,8 @@ TEST_SRCS := \
   $(TESTDIR)/test_kinds.f90 \
   $(TESTDIR)/test_data.f90  \
   $(TESTDIR)/test_io.f90    \
-  $(TESTDIR)/test_arith.f90
+  $(TESTDIR)/test_arith.f90 \
+  $(TESTDIR)/test_diff.f90
 
 TEST_BINS := $(patsubst $(TESTDIR)/%.f90, $(BUILDDIR)/%, $(TEST_SRCS))
 
@@ -83,9 +86,23 @@ TEST_BINS := $(patsubst $(TESTDIR)/%.f90, $(BUILDDIR)/%, $(TEST_SRCS))
 #  Default target
 # ------------------------------------------------------------------ #
 
-.PHONY: all test clean distclean
+# ------------------------------------------------------------------ #
+#  Application
+# ------------------------------------------------------------------ #
+
+APP_SRC := app/main.f90
+APP_BIN := $(BUILDDIR)/fcube_example
+
+$(APP_BIN): $(APP_SRC) $(LIB) | $(BUILDDIR)
+	$(FC) $(FFLAGS) $< -o $@ -L$(BUILDDIR) -lfcube
+
+.PHONY: all test example clean distclean
 
 all: $(LIB)
+
+example: $(APP_BIN)
+	@echo ""
+	./$(APP_BIN)
 
 # ------------------------------------------------------------------ #
 #  Library build
@@ -109,6 +126,8 @@ $(BUILDDIR):
 $(BUILDDIR)/cube_data.o:  $(BUILDDIR)/cube_kinds.o
 $(BUILDDIR)/cube_io.o:    $(BUILDDIR)/cube_data.o
 $(BUILDDIR)/cube_arith.o: $(BUILDDIR)/cube_data.o
+$(BUILDDIR)/cube_fft.o:   $(BUILDDIR)/cube_kinds.o
+$(BUILDDIR)/cube_diff.o:  $(BUILDDIR)/cube_fft.o   $(BUILDDIR)/cube_data.o  $(BUILDDIR)/cube_kinds.o
 
 # ------------------------------------------------------------------ #
 #  Test binaries
@@ -124,6 +143,8 @@ $(BUILDDIR)/test_io:    $(BUILDDIR)/cube_io.o    $(BUILDDIR)/cube_data.o  \
                         $(BUILDDIR)/cube_kinds.o
 $(BUILDDIR)/test_arith: $(BUILDDIR)/cube_arith.o $(BUILDDIR)/cube_data.o  \
                         $(BUILDDIR)/cube_kinds.o
+$(BUILDDIR)/test_diff:  $(BUILDDIR)/cube_diff.o  $(BUILDDIR)/cube_fft.o   \
+                        $(BUILDDIR)/cube_data.o   $(BUILDDIR)/cube_kinds.o
 
 # ------------------------------------------------------------------ #
 #  Run tests

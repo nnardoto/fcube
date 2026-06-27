@@ -1,0 +1,20 @@
+# Build artefacts
+build/
+
+# Fortran module files (if generated outside build/)
+*.mod
+*.smod
+
+# Object files
+*.o
+
+# Static libraries
+*.a
+
+# Editor temporaries
+*~
+\#*\#
+.DS_Store
+
+# Generated cube files
+/tmp/*.cube
